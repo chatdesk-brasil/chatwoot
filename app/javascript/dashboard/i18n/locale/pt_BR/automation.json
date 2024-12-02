@@ -31,6 +31,16 @@
           "LABEL": "Ações"
         }
       },
+      "INTERVALS": {
+        "NONE": "Nenhum",
+        "1HOUR": "1 Hora",
+        "1DAY": "1 Dia",
+        "3DAY": "3 Dias",
+        "7DAY": "7 Dias",
+        "CUSTOM": "Tempo Personalizado"
+      },
+
+      "INTERVAL": "Intervalo",
       "CONDITION_BUTTON_LABEL": "Adicionar condição",
       "ACTION_BUTTON_LABEL": "Adicionar ação",
       "API": {

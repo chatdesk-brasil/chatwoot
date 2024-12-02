@@ -76,6 +76,11 @@ Rails.application.routes.draw do
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :campaigns, only: [:index, :create, :show, :update, :destroy]
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
+          resources :custom_apis, only: [:index, :show, :create, :update, :destroy] do
+            collection do
+              put :update_all_orders
+            end
+          end
           namespace :channels do
             resource :twilio_channel, only: [:create]
           end
@@ -120,6 +125,15 @@ Rails.application.routes.draw do
             end
           end
 
+          resources :orders, only: [:index, :show] do
+            collection do
+              get :search
+              post :filter
+              get :all_orders
+              get :contact_order
+            end
+          end
+
           resources :contacts, only: [:index, :show, :update, :create, :destroy] do
             collection do
               get :active
@@ -128,11 +142,14 @@ Rails.application.routes.draw do
               post :import
               post :export
               get :all_contacts
+              get :corrupted
             end
+
             member do
               get :contactable_inboxes
               post :destroy_custom_attributes
               delete :avatar
+              post :deactivate_contact
             end
             scope module: :contacts do
               resources :conversations, only: [:index]
@@ -442,6 +459,15 @@ Rails.application.routes.draw do
   post 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#process_payload'
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'
   post 'webhooks/instagram', to: 'webhooks/instagram#events'
+
+  # Routes for custom api integration webhooks
+  post 'webhooks/custom_api/order/created/:api_id', to: 'webhooks/integrations/custom_api#process_order_created'
+  post 'webhooks/custom_api/order/status_update/:api_id', to: 'webhooks/integrations/custom_api#process_order_status'
+  post 'webhooks/custom_api/order/updated/:api_id', to: 'webhooks/integrations/custom_api#process_order_update'
+  post 'webhooks/custom_api/order/deleted/:api_id', to: 'webhooks/integrations/custom_api#process_order_deleted'
+  post 'webhooks/custom_api/order_item/updated/:api_id', to: 'webhooks/integrations/custom_api#process_order_item_update'
+  post 'webhooks/custom_api/contact/updated/:api_id', to: 'webhooks/integrations/custom_api#process_contact_updated'
+  post 'webhooks/custom_api/cart_recovery/:api_id', to: 'webhooks/integrations/custom_api#process_cart_recovery'
 
   namespace :twitter do
     resource :callback, only: [:show]

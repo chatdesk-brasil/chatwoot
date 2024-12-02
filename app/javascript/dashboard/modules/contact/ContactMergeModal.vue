@@ -38,6 +38,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    suggestedContactId: {
+      type: String,
+      default: '',
+    },
   },
   data() {
     return {
@@ -51,9 +55,16 @@ export default {
     }),
   },
 
+  mounted() {
+    this.onContactSearch(this.suggestedContactId);
+  },
+
   methods: {
     onClose() {
       this.$emit('close');
+    },
+    onSucess(id) {
+      this.$emit('sucess', id);
     },
     async onContactSearch(query) {
       this.isSearching = true;
@@ -81,6 +92,7 @@ export default {
         });
         useAlert(this.$t('MERGE_CONTACTS.FORM.SUCCESS_MESSAGE'));
         this.onClose();
+        this.onSucess(parentContactId);
       } catch (error) {
         useAlert(this.$t('MERGE_CONTACTS.FORM.ERROR_MESSAGE'));
       }
