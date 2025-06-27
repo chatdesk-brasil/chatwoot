@@ -90,7 +90,9 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
 
   def send_attachment_message(phone_number, message)
     attachment = message.attachments.first
-    type = %w[image audio video].include?(attachment.file_type) ? attachment.file_type : 'document'
+
+    type = whatsapp_media_type(attachment)
+
     type_content = {
       'link': attachment.download_url
     }
@@ -107,7 +109,6 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
         type.to_s => type_content
       }.to_json
     )
-
     process_response(response)
   end
 
@@ -125,7 +126,7 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
 
     if response.success?
       response['data']
-    elsif error_subcode == 4182004
+    elsif error_subcode == 4_182_004
       'Insights are not enabled'
     else
       Rails.logger.error response.body
@@ -191,10 +192,25 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
   end
 
   def get_template_analytics(start_date, end_date, template_ids)
-
-    response = HTTParty.get("#{business_account_path}/template_analytics?start=#{start_date}&end=#{end_date}&granularity=daily&metric_types=cost%2Cclicked%2Cdelivered%2Cread%2Csent&template_ids=#{template_ids}" ,
+    response = HTTParty.get("#{business_account_path}/template_analytics?start=#{start_date}&end=#{end_date}&granularity=daily&metric_types=cost%2Cclicked%2Cdelivered%2Cread%2Csent&template_ids=#{template_ids}",
                             headers: api_headers)
 
     process_template_analytics_response(response)
+  end
+
+  private
+
+  def whatsapp_media_type(attachment)
+    base_type = %w[image audio video].include?(attachment.file_type) ? attachment.file_type : 'document'
+    file_size = attachment.file.blob.byte_size
+
+    case base_type
+    when 'image'
+      return 'document' if file_size > 5.megabytes
+    when 'audio', 'video'
+      return 'document' if file_size > 16.megabytes
+    end
+
+    base_type
   end
 end
