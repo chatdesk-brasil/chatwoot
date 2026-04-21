@@ -67,6 +67,9 @@
           />
         </div>
       </div>
+      <p v-if="hasEmptyButtonParams && buttonParamsTouched" class="error">
+        {{ $t('WHATSAPP_TEMPLATES.PARSER.FORM_ERROR_MESSAGE') }}
+      </p>
     </div>
     <footer>
       <woot-button
@@ -132,11 +135,15 @@ export default {
     return {
       processedParams: {},
       buttonParams: [],
+      buttonParamsTouched: false,
       disableResetButton: true,
       eventVariables: {},
     };
   },
   computed: {
+    hasEmptyButtonParams() {
+      return this.buttonParams.some(p => !p.value.trim());
+    },
     variables() {
       const variables = this.templateString.match(/{{([^}]+)}}/g);
       return variables;
@@ -170,6 +177,12 @@ export default {
     },
   },
 
+  watch: {
+    template() {
+      this.initButtonParams();
+      this.buttonParamsTouched = false;
+    },
+  },
   mounted() {
     this.generateVariables();
     this.initButtonParams();
@@ -187,6 +200,8 @@ export default {
     sendMessage() {
       this.$v.$touch();
       if (this.$v.$invalid) return;
+      this.buttonParamsTouched = true;
+      if (this.hasEmptyButtonParams) return;
       const payload = {
         message: this.processedString,
         templateParams: {
