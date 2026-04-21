@@ -17,6 +17,7 @@
         "PARSER": {
             "VARIABLES_LABEL": "Variables",
             "VARIABLE_PLACEHOLDER": "Enter %{variable} value",
+            "BUTTON_VARIABLES_LABEL": "Button variables",
             "GO_BACK_LABEL": "Go Back",
             "SEND_MESSAGE_LABEL": "Send Message",
             "FORM_ERROR_MESSAGE": "Please fill all variables before sending"

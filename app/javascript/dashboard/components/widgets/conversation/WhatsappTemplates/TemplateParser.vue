@@ -43,6 +43,24 @@
         {{ $t('WHATSAPP_TEMPLATES.PARSER.FORM_ERROR_MESSAGE') }}
       </p>
     </div>
+    <div v-if="urlButtons.length > 0" class="template__variables-container">
+      <p class="variables-label">
+        {{ $t('WHATSAPP_TEMPLATES.PARSER.BUTTON_VARIABLES_LABEL') }}
+      </p>
+      <div
+        v-for="(btn, i) in urlButtons"
+        :key="'btn-' + i"
+        class="template__variable-item"
+      >
+        <span class="variable-label">{{ btn.text }}</span>
+        <woot-input
+          v-model="buttonParams[i].value"
+          type="text"
+          class="variable-input"
+          :styles="{ marginBottom: 0 }"
+        />
+      </div>
+    </div>
     <footer>
       <woot-button
         :disabled="disableResetButton"
@@ -106,6 +124,7 @@ export default {
   data() {
     return {
       processedParams: {},
+      buttonParams: [],
       disableResetButton: true,
       eventVariables: {},
     };
@@ -119,6 +138,15 @@ export default {
       return this.template.components.find(
         component => component.type === 'BODY'
       ).text;
+    },
+    urlButtons() {
+      const buttonsComponent = this.template.components.find(
+        c => c.type === 'BUTTONS'
+      );
+      if (!buttonsComponent) return [];
+      return buttonsComponent.buttons
+        .map((btn, index) => ({ ...btn, index }))
+        .filter(btn => btn.type === 'URL' && btn.url && btn.url.includes('{{'));
     },
 
     processedString() {
@@ -137,6 +165,7 @@ export default {
 
   mounted() {
     this.generateVariables();
+    this.initButtonParams();
     this.setDisableResetButton();
 
     if (this.selectedParams) {
@@ -144,7 +173,6 @@ export default {
     }
 
     if (this.selectedEventParams) {
-      console.log(this.selectedEventParams);
       this.eventVariables = this.selectedEventParams;
     }
   },
@@ -160,9 +188,16 @@ export default {
           language: this.template.language,
           namespace: this.template.namespace,
           processed_params: this.processedParams,
+          button_params: this.buttonParams,
         },
       };
       this.$emit('sendMessage', payload);
+    },
+    initButtonParams() {
+      this.buttonParams = this.urlButtons.map(btn => ({
+        index: btn.index,
+        value: '',
+      }));
     },
     processVariable(str) {
       return str.replace(/{{|}}/g, '');
