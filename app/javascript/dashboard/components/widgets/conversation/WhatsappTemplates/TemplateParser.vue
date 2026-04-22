@@ -43,6 +43,34 @@
         {{ $t('WHATSAPP_TEMPLATES.PARSER.FORM_ERROR_MESSAGE') }}
       </p>
     </div>
+    <div v-if="urlButtons.length > 0" class="template__variables-container">
+      <p class="variables-label">
+        {{ $t('WHATSAPP_TEMPLATES.PARSER.BUTTON_VARIABLES_LABEL') }}
+      </p>
+      <div
+        v-for="(btn, i) in urlButtons"
+        :key="'btn-' + i"
+        class="template__button-item"
+      >
+        <div class="button-item__header">
+          <span class="variable-label">{{ btn.text }}</span>
+          <span class="button-type-badge">URL</span>
+        </div>
+        <div class="button-item__url-hint">
+          <span class="url-hint-text">{{ urlWithoutVariable(btn.url) }}</span>
+          <woot-input
+            v-model="buttonParams[i].value"
+            type="text"
+            class="variable-input"
+            :placeholder="urlVariablePlaceholder(btn.url)"
+            :styles="{ marginBottom: 0 }"
+          />
+        </div>
+      </div>
+      <p v-if="hasEmptyButtonParams && buttonParamsTouched" class="error">
+        {{ $t('WHATSAPP_TEMPLATES.PARSER.FORM_ERROR_MESSAGE') }}
+      </p>
+    </div>
     <footer>
       <woot-button
         :disabled="disableResetButton"
@@ -106,11 +134,16 @@ export default {
   data() {
     return {
       processedParams: {},
+      buttonParams: [],
+      buttonParamsTouched: false,
       disableResetButton: true,
       eventVariables: {},
     };
   },
   computed: {
+    hasEmptyButtonParams() {
+      return this.buttonParams.some(p => !p.value.trim());
+    },
     variables() {
       const variables = this.templateString.match(/{{([^}]+)}}/g);
       return variables;
@@ -119,6 +152,15 @@ export default {
       return this.template.components.find(
         component => component.type === 'BODY'
       ).text;
+    },
+    urlButtons() {
+      const buttonsComponent = this.template.components.find(
+        c => c.type === 'BUTTONS'
+      );
+      if (!buttonsComponent) return [];
+      return buttonsComponent.buttons
+        .map((btn, index) => ({ ...btn, index }))
+        .filter(btn => btn.type === 'URL' && btn.url && btn.url.includes('{{'));
     },
 
     processedString() {
@@ -135,8 +177,15 @@ export default {
     },
   },
 
+  watch: {
+    template() {
+      this.initButtonParams();
+      this.buttonParamsTouched = false;
+    },
+  },
   mounted() {
     this.generateVariables();
+    this.initButtonParams();
     this.setDisableResetButton();
 
     if (this.selectedParams) {
@@ -144,7 +193,6 @@ export default {
     }
 
     if (this.selectedEventParams) {
-      console.log(this.selectedEventParams);
       this.eventVariables = this.selectedEventParams;
     }
   },
@@ -152,6 +200,8 @@ export default {
     sendMessage() {
       this.$v.$touch();
       if (this.$v.$invalid) return;
+      this.buttonParamsTouched = true;
+      if (this.hasEmptyButtonParams) return;
       const payload = {
         message: this.processedString,
         templateParams: {
@@ -160,9 +210,16 @@ export default {
           language: this.template.language,
           namespace: this.template.namespace,
           processed_params: this.processedParams,
+          button_params: this.buttonParams,
         },
       };
       this.$emit('sendMessage', payload);
+    },
+    initButtonParams() {
+      this.buttonParams = this.urlButtons.map(btn => ({
+        index: btn.index,
+        value: '',
+      }));
     },
     processVariable(str) {
       return str.replace(/{{|}}/g, '');
@@ -193,6 +250,13 @@ export default {
         this.disableResetButton = false;
       }, 100);
     },
+    urlWithoutVariable(url) {
+      return url.replace(/\{\{[^}]+\}\}.*$/, '');
+    },
+    urlVariablePlaceholder(url) {
+      const match = url.match(/\{\{([^}]+)\}\}/);
+      return match ? `{{${match[1]}}}` : '';
+    },
   },
 };
 </script>
@@ -219,6 +283,34 @@ export default {
 
   .variable-label {
     @apply bg-slate-75 dark:bg-slate-700 text-slate-700 dark:text-slate-100 inline-block rounded-md text-xs py-2.5 px-6;
+  }
+}
+
+.template__button-item {
+  @apply mb-3;
+
+  .button-item__header {
+    @apply flex items-center gap-2 mb-1.5;
+  }
+
+  .button-item__url-hint {
+    @apply flex items-center;
+  }
+
+  .url-hint-text {
+    @apply text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap;
+  }
+
+  .variable-input {
+    @apply flex-1 text-sm ml-1;
+  }
+
+  .variable-label {
+    @apply bg-slate-75 dark:bg-slate-700 text-slate-700 dark:text-slate-100 inline-block rounded-md text-xs py-2.5 px-6;
+  }
+
+  .button-type-badge {
+    @apply bg-woot-75 dark:bg-woot-800 text-woot-600 dark:text-woot-200 text-xs font-semibold rounded px-1.5 py-0.5;
   }
 }
 

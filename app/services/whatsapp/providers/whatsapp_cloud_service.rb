@@ -155,6 +155,16 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
       }
     end
 
+    Array(template_info[:button_params]).each do |btn|
+      btn = btn.with_indifferent_access
+      components << {
+        type: 'button',
+        sub_type: 'url',
+        index: btn[:index],
+        parameters: [{ type: 'text', text: btn[:value] }]
+      }
+    end
+
     {
       name: template_info[:name],
       language: {
