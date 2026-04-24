@@ -75,7 +75,22 @@ class Whatsapp::IncomingMessageBaseService
     create_message(message)
     attach_files
     attach_location if message_type == 'location'
+    set_flow_response_attributes(message)
     @message.save!
+  end
+
+  def set_flow_response_attributes(message)
+    return unless message_type == 'interactive'
+    return unless message.dig(:interactive, :type) == 'nfm_reply'
+
+    response_json = message.dig(:interactive, :nfm_reply, :response_json)
+    return if response_json.blank?
+
+    @message.content_attributes = (@message.content_attributes || {}).merge(
+      'flow_response' => JSON.parse(response_json)
+    )
+  rescue JSON::ParserError => e
+    Rails.logger.error "Failed to parse flow response JSON: #{e.message}"
   end
 
   def set_contact
