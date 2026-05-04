@@ -221,6 +221,23 @@ RSpec.describe Message do
       expect(conversation.open?).to be false
       expect(conversation.pending?).to be true
     end
+
+    it 'reopens pending conversation when the message is from a contact and the inbox has no active bot' do
+      conversation.pending!
+      message.save!
+      expect(message.conversation.open?).to be true
+    end
+
+    it 'keeps pending status when the inbox has an active bot' do
+      agent_bot = create(:agent_bot)
+      inbox = conversation.inbox
+      inbox.agent_bot = agent_bot
+      inbox.save!
+      conversation.pending!
+      message.save!
+      expect(conversation.open?).to be false
+      expect(conversation.pending?).to be true
+    end
   end
 
   describe '#waiting since' do

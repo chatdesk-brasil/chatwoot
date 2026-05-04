@@ -331,8 +331,16 @@ class Message < ApplicationRecord
     return unless incoming?
 
     conversation.open! if conversation.snoozed?
+    reopen_pending_conversation if conversation.pending?
 
     reopen_resolved_conversation if conversation.resolved?
+  end
+
+  def reopen_pending_conversation
+    return if conversation.inbox.active_bot?
+
+    Current.executed_by = sender if reopened_by_contact?
+    conversation.open!
   end
 
   def reopen_resolved_conversation
