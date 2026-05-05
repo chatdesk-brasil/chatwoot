@@ -30,6 +30,7 @@ module Whatsapp::IncomingMessageServiceHelpers
       message.dig(:button, :text) ||
       message.dig(:interactive, :button_reply, :title) ||
       message.dig(:interactive, :list_reply, :title) ||
+      message.dig(:interactive, :nfm_reply, :body) ||
       message.dig(:name, :formatted_name)
   end
 

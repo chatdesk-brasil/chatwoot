@@ -344,6 +344,53 @@ describe Whatsapp::IncomingMessageService do
       end
     end
 
+    context 'when valid interactive nfm_reply message (WhatsApp Flow response)' do
+      let(:wa_id) { '2423423243' }
+      let!(:params) do
+        {
+          'contacts' => [{ 'profile' => { 'name' => 'Sojan Jose' }, 'wa_id' => wa_id }],
+          'messages' => [{
+            'from' => wa_id,
+            'id' => 'wamid.flow123',
+            'timestamp' => '1633034394',
+            'type' => 'interactive',
+            'interactive' => {
+              'type' => 'nfm_reply',
+              'nfm_reply' => {
+                'name' => 'flow',
+                'body' => 'Sent',
+                'response_json' => '{"flow_name":"pesquisa_satisfacao","rating1":"5","comment1":"Great"}'
+              }
+            }
+          }]
+        }.with_indifferent_access
+      end
+
+      it 'creates message with content from nfm_reply body' do
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+        message = whatsapp_channel.inbox.messages.last
+        expect(message.content).to eq('Sent')
+      end
+
+      it 'stores flow response in content_attributes' do
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+        message = whatsapp_channel.inbox.messages.last
+        expect(message.content_attributes['flow_response']).to eq({
+          'flow_name' => 'pesquisa_satisfacao',
+          'rating1' => '5',
+          'comment1' => 'Great'
+        })
+      end
+
+      it 'handles malformed response_json gracefully' do
+        params[:messages].first[:interactive][:nfm_reply][:response_json] = 'not-json'
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+        message = whatsapp_channel.inbox.messages.last
+        expect(message.content).to eq('Sent')
+        expect(message.content_attributes['flow_response']).to be_nil
+      end
+    end
+
     describe 'when message processing is in progress' do
       it 'ignores the current message creation request' do
         params = { 'contacts' => [{ 'profile' => { 'name' => 'Kedar' }, 'wa_id' => '919746334593' }],
