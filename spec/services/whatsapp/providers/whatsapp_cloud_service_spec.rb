@@ -196,7 +196,7 @@ describe Whatsapp::Providers::WhatsappCloudService do
 
     context 'when template_info has button_params with sub_type "url"' do
       let(:template_info_with_url_button) do
-        template_info.merge(button_params: [{ index: 0, value: 'TRACK123' }])
+        template_info.merge(button_params: [{ index: 0, sub_type: 'url', value: 'TRACK123' }])
       end
 
       let(:expected_body) do
