@@ -193,6 +193,75 @@ describe Whatsapp::Providers::WhatsappCloudService do
         expect(service.send_template('+123456789', template_info)).to eq('message_id')
       end
     end
+
+    context 'when template_info has button_params with sub_type "url"' do
+      let(:template_info_with_url_button) do
+        template_info.merge(button_params: [{ index: 0, value: 'TRACK123' }])
+      end
+
+      let(:expected_body) do
+        body = template_body.deep_dup
+        body[:template][:components] << {
+          type: 'button',
+          sub_type: 'url',
+          index: 0,
+          parameters: [{ type: 'text', text: 'TRACK123' }]
+        }
+        body
+      end
+
+      it 'sends url button with text parameter' do
+        stub_request(:post, 'https://graph.facebook.com/v13.0/123456789/messages')
+          .with(body: expected_body.to_json)
+          .to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+
+        expect(service.send_template('+123456789', template_info_with_url_button)).to eq('message_id')
+      end
+    end
+
+    context 'when template_info has button_params with sub_type "flow"' do
+      let(:template_info_with_flow_button) do
+        template_info.merge(button_params: [{ index: 0, sub_type: 'flow', value: 'tok_abc123' }])
+      end
+
+      let(:expected_body) do
+        body = template_body.deep_dup
+        body[:template][:components] << {
+          type: 'button',
+          sub_type: 'flow',
+          index: 0,
+          parameters: [{ type: 'action', action: { flow_token: 'tok_abc123' } }]
+        }
+        body
+      end
+
+      it 'sends flow button with action+flow_token parameter' do
+        stub_request(:post, 'https://graph.facebook.com/v13.0/123456789/messages')
+          .with(body: expected_body.to_json)
+          .to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+
+        expect(service.send_template('+123456789', template_info_with_flow_button)).to eq('message_id')
+      end
+    end
+
+    context 'when sub_type is omitted (backward compatibility)' do
+      let(:template_info_default) do
+        template_info.merge(button_params: [{ index: 0, value: 'fallback' }])
+      end
+
+      it 'defaults to url sub_type' do
+        stub_request(:post, 'https://graph.facebook.com/v13.0/123456789/messages')
+          .with do |req|
+            JSON.parse(req.body)['template']['components'].any? do |c|
+              c['type'] == 'button' && c['sub_type'] == 'url' &&
+                c['parameters'] == [{ 'type' => 'text', 'text' => 'fallback' }]
+            end
+          end
+          .to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+
+        expect(service.send_template('+123456789', template_info_default)).to eq('message_id')
+      end
+    end
   end
 
   describe '#sync_templates' do

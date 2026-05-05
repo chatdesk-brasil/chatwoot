@@ -157,12 +157,7 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
 
     Array(template_info[:button_params]).each do |btn|
       btn = btn.with_indifferent_access
-      components << {
-        type: 'button',
-        sub_type: 'url',
-        index: btn[:index],
-        parameters: [{ type: 'text', text: btn[:value] }]
-      }
+      components << build_button_component(btn)
     end
 
     {
@@ -173,6 +168,25 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
       },
       components: components
     }
+  end
+
+  def build_button_component(btn)
+    case btn[:sub_type].to_s.downcase
+    when 'flow'
+      {
+        type: 'button',
+        sub_type: 'flow',
+        index: btn[:index],
+        parameters: [{ type: 'action', action: { flow_token: btn[:value] } }]
+      }
+    else
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: btn[:index],
+        parameters: [{ type: 'text', text: btn[:value] }]
+      }
+    end
   end
 
   def whatsapp_reply_context(message)
