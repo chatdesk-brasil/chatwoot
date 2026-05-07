@@ -3,15 +3,7 @@ module IntegrationContactHelper
     digits = phone_number.to_s.gsub(/\D/, '')
     digits = "55#{digits}" unless digits.start_with?('55')
 
-    # Brazilian mobile numbers received a mandatory leading 9 in 2012. Some
-    # upstream integrations still deliver the legacy 12-digit format; insert
-    # the 9 so we always store the canonical 13-digit form. Landlines (local
-    # prefix 2-5) keep the 12-digit form.
-    if digits.length == 12 && digits[4].to_i.between?(6, 9)
-      digits = "55#{digits[2, 2]}9#{digits[4..]}"
-    end
-
-    "+#{digits}"
+    Phone::BrazilianNormalizer.canonical("+#{digits}")
   end
 
   def build_custom_attributes(order_data, corrupted_data = nil)
