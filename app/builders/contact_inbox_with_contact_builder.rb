@@ -81,6 +81,31 @@ class ContactInboxWithContactBuilder
   def find_contact_by_phone_number(phone_number)
     return if phone_number.blank?
 
-    account.contacts.find_by(phone_number: phone_number)
+    account.contacts.where(phone_number: phone_number_lookup_variants(phone_number)).first
+  end
+
+  # Returns the phone number plus its Brazilian 12/13-digit variant when the
+  # number is a BR mobile. Lets us match contacts saved with or without the
+  # leading 9 added in 2012 — upstream integrations and WhatsApp can deliver
+  # either form.
+  def phone_number_lookup_variants(phone_number)
+    digits = phone_number.to_s.gsub(/\D/, '')
+    return [phone_number] unless digits.start_with?('55')
+
+    ddd = digits[2, 2]
+    local = digits[4..].to_s
+
+    case digits.length
+    when 12
+      return [phone_number] unless local[0].to_i.between?(6, 9)
+
+      ["+55#{ddd}9#{local}", "+55#{ddd}#{local}"]
+    when 13
+      return [phone_number] unless local[0] == '9'
+
+      ["+55#{ddd}#{local}", "+55#{ddd}#{local[1..]}"]
+    else
+      [phone_number]
+    end
   end
 end
