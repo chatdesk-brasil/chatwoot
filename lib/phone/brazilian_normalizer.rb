@@ -43,6 +43,17 @@ module Phone
       variants(phone_number).first
     end
 
+    # Returns true when both inputs refer to the same Brazilian mobile number
+    # regardless of the 12-digit / 13-digit format. Falls back to strict
+    # equality for non-Brazilian or unrecognized inputs. Symmetric on the
+    # canonical form so argument order does not affect the result.
+    def matches?(phone_a, phone_b)
+      return false if phone_a.nil? || phone_b.nil?
+      return true if phone_a == phone_b
+
+      canonical(phone_a) == canonical(phone_b)
+    end
+
     def mobile_local_prefix?(digit)
       return false if digit.nil?
 

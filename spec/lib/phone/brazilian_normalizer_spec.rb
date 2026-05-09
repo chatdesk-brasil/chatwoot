@@ -58,4 +58,35 @@ RSpec.describe Phone::BrazilianNormalizer do
       expect(described_class.canonical('+12025551234')).to eq('+12025551234')
     end
   end
+
+  describe '.matches?' do
+    it 'matches the same BR mobile across 12-digit and 13-digit forms' do
+      expect(described_class.matches?('+558181132326', '+5581981132326')).to be true
+      expect(described_class.matches?('+5581981132326', '+558181132326')).to be true
+    end
+
+    it 'returns true for identical inputs' do
+      expect(described_class.matches?('+5581981132326', '+5581981132326')).to be true
+    end
+
+    it 'returns false for different BR mobile numbers' do
+      expect(described_class.matches?('+5581981132326', '+5581988887777')).to be false
+    end
+
+    it 'is symmetric (argument order does not change the result)' do
+      expect(described_class.matches?('+558181132326', '+5581981132326'))
+        .to eq(described_class.matches?('+5581981132326', '+558181132326'))
+    end
+
+    it 'does not match a BR landline against a mobile that shares the same trailing 8 digits' do
+      expect(described_class.matches?('+551130304040', '+5511930304040')).to be false
+      expect(described_class.matches?('+5511930304040', '+551130304040')).to be false
+    end
+
+    it 'returns false for nil inputs' do
+      expect(described_class.matches?(nil, '+5581981132326')).to be false
+      expect(described_class.matches?('+5581981132326', nil)).to be false
+      expect(described_class.matches?(nil, nil)).to be false
+    end
+  end
 end
