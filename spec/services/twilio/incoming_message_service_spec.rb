@@ -199,10 +199,11 @@ describe Twilio::IncomingMessageService do
 
     context 'when there is an error downloading the attachment' do
       before do
-        stub_request(:get, 'https://chatwoot-assets.local/sample.png')
-          .to_raise(Down::Error.new('Download error'))
+        # Skip the retry delay so the test runs instantly.
+        allow_any_instance_of(described_class).to receive(:sleep)
 
         stub_request(:get, 'https://chatwoot-assets.local/sample.png')
+          .to_raise(Down::Error.new('Download error')).then
           .to_return(status: 200, body: 'image data', headers: {})
       end
 
@@ -219,7 +220,7 @@ describe Twilio::IncomingMessageService do
         }
       end
 
-      it 'retries downloading the attachment without a token after an error' do
+      it 'retries downloading the attachment with auth after a transient error' do
         expect do
           described_class.new(params: params_with_attachment_error).perform
         end.not_to raise_error
@@ -227,6 +228,37 @@ describe Twilio::IncomingMessageService do
         expect(conversation.reload.messages.last.content).to eq('testing3')
         expect(conversation.reload.messages.last.attachments.count).to eq(1)
         expect(conversation.reload.messages.last.attachments.first.file_type).to eq('image')
+      end
+    end
+
+    context 'when the attachment download fails on both attempts' do
+      before do
+        allow_any_instance_of(described_class).to receive(:sleep)
+
+        stub_request(:get, 'https://chatwoot-assets.local/sample.png')
+          .to_raise(Down::Error.new('Download error'))
+      end
+
+      let(:params_with_persistent_error) do
+        {
+          SmsSid: 'SMxx',
+          From: '+12345',
+          AccountSid: 'ACxxx',
+          MessagingServiceSid: twilio_channel.messaging_service_sid,
+          Body: 'persistent failure',
+          NumMedia: '1',
+          MediaContentType0: 'image/jpeg',
+          MediaUrl0: 'https://chatwoot-assets.local/sample.png'
+        }
+      end
+
+      it 'creates the message without an attachment and does not raise' do
+        expect do
+          described_class.new(params: params_with_persistent_error).perform
+        end.not_to raise_error
+
+        expect(conversation.reload.messages.last.content).to eq('persistent failure')
+        expect(conversation.reload.messages.last.attachments.count).to eq(0)
       end
     end
   end
