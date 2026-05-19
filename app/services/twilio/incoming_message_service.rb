@@ -125,6 +125,8 @@ class Twilio::IncomingMessageService
     @message.save!
   end
 
+  MEDIA_DOWNLOAD_RETRY_DELAY = 2.seconds
+
   def download_attachment_file
     download_with_auth
   rescue Down::Error, Down::ClientError => e
@@ -139,12 +141,15 @@ class Twilio::IncomingMessageService
     )
   end
 
-  # This is just a temporary workaround since some users have not yet enabled media protection. We will remove this in the future.
+  # Twilio sometimes fires the inbound webhook before the media is fully staged at
+  # the MediaUrl (race condition, especially for externally-hosted media that Twilio
+  # has to fetch and re-host). Retry once with auth after a short delay before giving up.
   def handle_download_attachment_error(error)
-    Rails.logger.info "Error downloading attachment from Twilio: #{error.message}: Retrying"
-    Down.download(params[:MediaUrl0])
+    Rails.logger.warn "[Twilio] Media download failed on first attempt for message #{@message&.id} (MediaUrl=#{params[:MediaUrl0]}): #{error.class}: #{error.message}. Retrying in #{MEDIA_DOWNLOAD_RETRY_DELAY}s."
+    sleep MEDIA_DOWNLOAD_RETRY_DELAY
+    download_with_auth
   rescue StandardError => e
-    Rails.logger.info "Error downloading attachment from Twilio: #{e.message}: Skipping"
+    Rails.logger.error "[Twilio] Media download FAILED after retry for message #{@message&.id} (MediaUrl=#{params[:MediaUrl0]}): #{e.class}: #{e.message}"
     nil
   end
 end
