@@ -95,5 +95,43 @@ describe ContactInboxWithContactBuilder do
 
       expect(contact_inbox.contact.id).to be(contact.id)
     end
+
+    context 'with Brazilian mobile number variants' do
+      let!(:br_contact) { create(:contact, account: account, phone_number: '+5581981132326') }
+
+      it 'matches existing 13-digit contact when lookup uses 12-digit form' do
+        contact_inbox = described_class.new(
+          source_id: '558181132326',
+          inbox: inbox,
+          contact_attributes: { name: 'Lais', phone_number: '+558181132326' }
+        ).perform
+
+        expect(contact_inbox.contact.id).to eq(br_contact.id)
+      end
+
+      it 'matches existing 12-digit contact when lookup uses 13-digit form' do
+        br_contact.update!(phone_number: '+558181132326')
+
+        contact_inbox = described_class.new(
+          source_id: '5581981132326',
+          inbox: inbox,
+          contact_attributes: { name: 'Lais', phone_number: '+5581981132326' }
+        ).perform
+
+        expect(contact_inbox.contact.id).to eq(br_contact.id)
+      end
+
+      it 'does not generate variants for non-Brazilian numbers' do
+        intl_contact = create(:contact, account: account, phone_number: '+12025551234')
+
+        contact_inbox = described_class.new(
+          source_id: 'intl-1',
+          inbox: inbox,
+          contact_attributes: { name: 'Intl', phone_number: '+12025551234' }
+        ).perform
+
+        expect(contact_inbox.contact.id).to eq(intl_contact.id)
+      end
+    end
   end
 end

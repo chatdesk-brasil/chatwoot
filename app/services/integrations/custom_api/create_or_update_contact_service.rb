@@ -90,16 +90,20 @@ class Integrations::CustomApi::CreateOrUpdateContactService
     contact = Contact.find_by(account_id: @custom_api['account_id'], email: @account_data['email'], active: true)
     return { :type => 'email', :contact_data => contact } unless contact.nil?
 
-    # Verifica se já existe com base no phone
-    contact = Contact.find_by(account_id: @custom_api['account_id'], phone_number: @formated_phone_number, active: true)
+    # Verifica se já existe com base no phone (incluindo variantes BR de 12/13 dígitos)
+    contact = Contact.where(account_id: @custom_api['account_id'],
+                            phone_number: Phone::BrazilianNormalizer.variants(@formated_phone_number),
+                            active: true).first
     return { :type => 'phone', :contact_data => contact } unless contact.nil?
 
     { type: nil, contact_data: nil }
   end
 
   def find_contact_corrupted(contact_value) # rubocop:disable Metrics/CyclomaticComplexity
-    # Verifica se já existe um contato com o phone_number
-    phone_contact = Contact.where(account_id: @custom_api['account_id'], phone_number: @formated_phone_number, active: true)
+    # Verifica se já existe um contato com o phone_number (incluindo variantes BR de 12/13 dígitos)
+    phone_contact = Contact.where(account_id: @custom_api['account_id'],
+                                  phone_number: Phone::BrazilianNormalizer.variants(@formated_phone_number),
+                                  active: true)
     phone_contact = if contact_value[:type] == 'phone' || contact_value[:type] == 'id_from_integration'
                       phone_contact.find_by("additional_attributes->>'id_from_integration' != ?",
                                             @account_data['id'].to_s)
@@ -133,7 +137,7 @@ class Integrations::CustomApi::CreateOrUpdateContactService
     if contact_ids.length > 1
       corrupted_value = []
       contacts.each do |contact|
-        if contact.phone_number == @formated_phone_number
+        if Phone::BrazilianNormalizer.matches?(contact.phone_number, @formated_phone_number)
           corrupted_value << contact.phone_number
         elsif contact.identifier == @account_data['document']
           corrupted_value << contact.identifier
@@ -142,9 +146,11 @@ class Integrations::CustomApi::CreateOrUpdateContactService
       { contact_corrupted: contact_ids, corrupted_type: 'conflict', corrupted_value: corrupted_value }
     else
       contact = contacts.first
-      if contact.phone_number == @formated_phone_number && contact.identifier == @account_data['document']
+      phone_match = Phone::BrazilianNormalizer.matches?(contact.phone_number, @formated_phone_number)
+
+      if phone_match && contact.identifier == @account_data['document']
         { contact_corrupted: [contact.id], corrupted_type: 'both', corrupted_value: [contact['phone_number'], contact['identifier']] }
-      elsif contact.phone_number == @formated_phone_number
+      elsif phone_match
         { contact_corrupted: [contact.id], corrupted_type: 'phone', corrupted_value: [contact['phone_number']] }
       else
         { contact_corrupted: [contact.id], corrupted_type: 'identifier', corrupted_value: [contact['identifier']] }

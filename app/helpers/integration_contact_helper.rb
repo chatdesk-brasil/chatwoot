@@ -1,12 +1,9 @@
 module IntegrationContactHelper
   def format_phone_number_to_e164(phone_number)
-    digits = phone_number.gsub(/\D/, '')
+    digits = phone_number.to_s.gsub(/\D/, '')
+    digits = "55#{digits}" unless digits.start_with?('55')
 
-    if digits.start_with?('55')
-      "+#{digits}"
-    else
-      "+55#{digits}"
-    end
+    Phone::BrazilianNormalizer.canonical("+#{digits}")
   end
 
   def build_custom_attributes(order_data, corrupted_data = nil)
